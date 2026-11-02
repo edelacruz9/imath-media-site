@@ -392,7 +392,8 @@ footer b{color:#fff;font-family:Montserrat,"Segoe UI",Arial,sans-serif;font-size
       <h3>Your estimate</h3>
       <div id="lines"></div>
       <div class="row t"><span>Total</span><span id="tot">$0</span></div>
-      <button class="btn mag" style="width:100%;margin-top:18px" type="submit">Send request</button>
+      <input id="hp" name="zz_trap_field" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <button class="btn mag" id="sendbtn" style="width:100%;margin-top:18px" type="submit">Send request</button>
       <div class="ok" id="ok"></div><a class="btn mailbtn" id="mailbtn" href="#">Email this request to admin@imathinc.com</a>
     </div>
   </form>
@@ -495,10 +496,27 @@ function sync(){movePill();rollPrices();renderForm();calc()}
 $("fband").onchange=function(){band=+this.value;sync()};
 $("fpkg").onchange=function(){pkg=+this.value;sync()};
 ["vo","rush","stg","seg"].forEach(function(id){$(id).oninput=calc});
+var API="https://wiabwoelnggvwgpdyyaf.supabase.co",KEY="sb_publishable_DKIxDHLESTIp1L844VjOzQ_gYqn7BY4";
 window.submitForm=function(e){
- e.preventDefault();var c=calc();
- var txt="Request received. Here is a copy for your records:\n\nName: "+$("name").value+"\nPhone: "+$("phone").value+"\nEmail: "+$("email").value+"\nAddress: "+$("addr").value+"\nDate: "+$("date").value+" ("+$("time").value+")\n\n"+c.L.map(function(r){return r[0]+": "+money(r[1])}).join("\n")+"\nTotal: "+money(c.t)+"\n\nWe will confirm your time shortly.";
- var ok=$("ok");ok.textContent=txt;ok.style.display="block";var mb=$("mailbtn");mb.href="mailto:admin@imathinc.com?subject="+encodeURIComponent("Booking request: "+$("addr").value)+"&body="+encodeURIComponent(txt+"\n\nNotes: "+$("notes").value);mb.style.display="block";return false;
+ e.preventDefault();var c=calc(),btn=$("sendbtn"),ok=$("ok"),mb=$("mailbtn");
+ var detail="Name: "+$("name").value+"\nPhone: "+$("phone").value+"\nEmail: "+$("email").value+"\nAddress: "+$("addr").value+"\nDate: "+$("date").value+" ("+$("time").value+")\n\n"+c.L.map(function(r){return r[0]+": "+money(r[1])}).join("\n")+"\nTotal: "+money(c.t);
+ mb.href="mailto:admin@imathinc.com?subject="+encodeURIComponent("Booking request: "+$("addr").value)+"&body="+encodeURIComponent("Booking request\n\n"+detail+"\n\nNotes: "+$("notes").value);
+ var ad=[];if($("vo").checked)ad.push({code:"voiceover",qty:1});if($("rush").checked)ad.push({code:"rush",qty:1});
+ var s=Math.max(0,parseInt($("stg").value)||0);if(s)ad.push({code:"staged_image",qty:s});var g=Math.max(0,parseInt($("seg").value)||0);if(g)ad.push({code:"agent_segment",qty:g});
+ var body={name:$("name").value,phone:$("phone").value,email:$("email").value,address:$("addr").value,"package":["essential","signature","premier"][pkg],band:band,date:$("date").value,window:$("time").value,notes:$("notes").value,addons:ad,website:$("hp").value};
+ btn.disabled=true;btn.textContent="Sending";ok.style.display="none";
+ fetch(API+"/rest/v1/rpc/submit_booking",{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify({payload:body})})
+ .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+ .then(function(x){
+  if(!x.ok)throw new Error((x.j&&x.j.message)||"Something went wrong");
+  ok.textContent="Request received. Your reference is "+x.j.ref+".\n\n"+detail+"\n\nWe will confirm your time shortly. Questions? Call 703.963.2829.";ok.style.display="block";mb.textContent="Email me a copy of this request";mb.style.display="block";
+  $("form").reset();renderForm();calc();
+ })
+ .catch(function(err){
+  ok.textContent="We could not send your request automatically ("+err.message+"). Please use the email button below or call 703.963.2829 and we will take care of it.";ok.style.display="block";mb.style.display="block";
+ })
+ .then(function(){btn.disabled=false;btn.textContent="Send request"});
+ return false;
 };
 
 /* checklist */
